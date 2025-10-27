@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weather Forecast App</title>
+  <style>
+    /* 🌈 Basic layout */
+    body {
+      font-family: "Poppins", sans-serif;
+      margin: 0;
+      background: linear-gradient(135deg, #7dd3fc, #38bdf8, #60a5fa);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+      transition: background 1s ease;
+    }
+
+    /* 💧 Animated background layers */
+    .rain, .clouds, .stars {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 0;
+    }
+
+    .raindrop {
+      position: absolute;
+      width: 2px;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.5);
+      bottom: 100%;
+      animation: rain 0.5s linear infinite;
+    }
+    @keyframes rain {
+      to { transform: translateY(100vh); opacity: 0; }
+    }
+
+    .cloud {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      animation: float 20s linear infinite;
+    }
+    @keyframes float {
+      from { transform: translateX(-200px); }
+      to { transform: translateX(100vw); }
+    }
+
+    .star {
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+      animation: twinkle 2s infinite ease-in-out;
+    }
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.2; }
+      50% { opacity: 1; }
+    }
+
+    /* ☀️ Foreground card */
+    .card {
+      position: relative;
+      z-index: 1;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      padding: 20px 30px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+      text-align: center;
+      max-width: 450px;
+      width: 100%;
+      backdrop-filter: blur(10px);
+    }
+
+    input {
+      width: 80%;
+      padding: 10px;
+      border-radius: 20px;
+      border: none;
+      outline: none;
+      font-size: 16px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .forecast {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    .day {
+      background: rgba(255, 255, 255, 0.25);
+      border-radius: 15px;
+      padding: 10px;
+      width: 90px;
+      text-align: center;
+    }
+
+    img {
+      width: 50px;
+      height: 50px;
+    }
+
+    .temp {
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .city {
+      font-size: 28px;
+      font-weight: 600;
+    }
+
+    .desc {
+      font-size: 16px;
+      margin-top: 5px;
+      text-transform: capitalize;
+    }
+
+    .details {
+      text-align: left;
+      margin-top: 15px;
+      font-size: 15px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 15px;
+      padding: 10px 15px;
+    }
+
+    .details span {
+      display: block;
+      margin: 4px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="rain"></div>
+  <div class="clouds"></div>
+  <div class="stars"></div>
+
+  <div class="card">
+    <h2>🌤 Weather Forecast</h2>
+    <input type="text" id="cityInput" placeholder="Enter city name..." />
+    <div id="weatherInfo"></div>
+    <div class="details" id="details"></div>
+    <div class="forecast" id="forecast"></div>
+  </div>
+
+  <script>
+    const apiKey = "483d334c2367a746460b4252a19282f5";
+
+    async function getWeather(city) {
+      if (!city) return;
+      const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;
+      const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${apiKey}&units=metric`;
+
+      const [weatherRes, forecastRes] = await Promise.all([
+        fetch(weatherUrl),
+        fetch(forecastUrl)
+      ]);
+
+      if (!weatherRes.ok || !forecastRes.ok) {
+        document.getElementById("weatherInfo").innerHTML = `<p>❌ City not found.</p>`;
+        document.getElementById("details").innerHTML = "";
+        document.getElementById("forecast").innerHTML = "";
+        clearBackgrounds();
+        return;
+      }
+
+      const weatherData = await weatherRes.json();
+      const forecastData = await forecastRes.json();
+
+      const icon = weatherData.weather[0].icon;
+      const desc = weatherData.weather[0].description;
+      const temp = Math.round(weatherData.main.temp);
+      const cityName = weatherData.name;
+      const humidity = weatherData.main.humidity;
+      const pressure = weatherData.main.pressure;
+      const wind = weatherData.wind.speed;
+      const feels = weatherData.main.feels_like;
+      const condition = weatherData.weather[0].main.toLowerCase();
+
+      document.getElementById("weatherInfo").innerHTML = `
+        <div class="city">${cityName}</div>
+        <img src="https://openweathermap.org/img/wn/${icon}@2x.png" alt="">
+        <div class="temp">${temp}°C</div>
+        <div class="desc">${desc}</div>
+      `;
+
+      document.getElementById("details").innerHTML = `
+        <span>💧 Humidity: ${humidity}%</span>
+        <span>🌬️ Wind Speed: ${wind} m/s</span>
+        <span>🌡️ Feels Like: ${feels}°C</span>
+        <span>📈 Pressure: ${pressure} hPa</span>
+      `;
+
+      const days = {};
+      forecastData.list.forEach(item => {
+        const date = item.dt_txt.split(" ")[0];
+        if (!days[date]) days[date] = [];
+        days[date].push(item);
+      });
+
+      const daily = Object.keys(days).slice(0, 5).map(date => {
+        const items = days[date];
+        const avgTemp = (items.reduce((s, i) => s + i.main.temp, 0) / items.length).toFixed(1);
+        const icon = items[4]?.weather[0].icon;
+        const pop = Math.round((items[4]?.pop || 0) * 100);
+        const willRain = pop > 40;
+        return { date, temp: avgTemp, icon, pop, willRain };
+      });
+
+      document.getElementById("forecast").innerHTML = daily.map(d => `
+        <div class="day">
+          <div>${d.date.split("-")[2]}/${d.date.split("-")[1]}</div>
+          <img src="https://openweathermap.org/img/wn/${d.icon}.png" alt="">
+          <div>${d.temp}°C</div>
+          <div>💧${d.pop}%</div>
+          <div>${d.willRain ? "🌧️ Rain" : "☀️ Clear"}</div>
+        </div>
+      `).join("");
+
+      // 🌈 Change background based on condition
+      updateBackground(condition);
+    }
+
+    function clearBackgrounds() {
+      document.querySelector(".rain").innerHTML = "";
+      document.querySelector(".clouds").innerHTML = "";
+      document.querySelector(".stars").innerHTML = "";
+    }
+
+    function updateBackground(condition) {
+      clearBackgrounds();
+      const body = document.body;
+      if (condition.includes("rain") || condition.includes("drizzle")) {
+        body.style.background = "linear-gradient(135deg, #60a5fa, #2563eb)";
+        for (let i = 0; i < 60; i++) {
+          const drop = document.createElement("div");
+          drop.className = "raindrop";
+          drop.style.left = Math.random() * 100 + "vw";
+          drop.style.animationDelay = Math.random() + "s";
+          drop.style.animationDuration = 0.4 + Math.random() * 0.5 + "s";
+          document.querySelector(".rain").appendChild(drop);
+        }
+      } else if (condition.includes("cloud")) {
+        body.style.background = "linear-gradient(135deg, #94a3b8, #64748b)";
+        for (let i = 0; i < 6; i++) {
+          const cloud = document.createElement("div");
+          cloud.className = "cloud";
+          cloud.style.width = 100 + Math.random() * 150 + "px";
+          cloud.style.height = 50 + Math.random() * 60 + "px";
+          cloud.style.top = Math.random() * 60 + "px";
+          cloud.style.left = Math.random() * 100 + "px";
+          cloud.style.animationDuration = 30 + Math.random() * 20 + "s";
+          document.querySelector(".clouds").appendChild(cloud);
+        }
+      } else if (condition.includes("clear")) {
+        body.style.background = "linear-gradient(135deg, #facc15, #f97316)";
+      } else if (condition.includes("thunder")) {
+        body.style.background = "linear-gradient(135deg, #0f172a, #1e3a8a)";
+      } else if (condition.includes("snow")) {
+        body.style.background = "linear-gradient(135deg, #e0f2fe, #bae6fd)";
+      } else {
+        // Night or default
+        body.style.background = "linear-gradient(135deg, #020617, #0f172a)";
+        for (let i = 0; i < 40; i++) {
+          const star = document.createElement("div");
+          star.className = "star";
+          star.style.width = star.style.height = Math.random() * 2 + "px";
+          star.style.top = Math.random() * 100 + "vh";
+          star.style.left = Math.random() * 100 + "vw";
+          star.style.animationDelay = Math.random() * 2 + "s";
+          document.querySelector(".stars").appendChild(star);
+        }
+      }
+    }
+
+    // Load default city
+    getWeather("Bengaluru");
+
+    document.getElementById("cityInput").addEventListener("keyup", e => {
+      if (e.key === "Enter") getWeather(e.target.value);
+    });
+  </script>
+</body>
+</html>
